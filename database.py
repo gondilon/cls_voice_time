@@ -25,7 +25,7 @@ def start_tracking(connection, case):
 
 
 
-def create_tables(connection):
+def create_db_tables(connection):
     time_tracking_table = '''create table if not exists time_tracking (
         case_num varchar not null,
         start_time varchar not null,
