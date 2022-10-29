@@ -109,16 +109,18 @@ def create_report():
                         case_report["time"] = time_diff
                         report_data[case[1]] = case_report
                     change_reported_state(connection, case[1])
-    print("created report.")
 
-    print(report_data)
+    #print(report_data)
 
-    with open(os.path.join(os.getcwd(),"user/cls_voice_time/case_report.txt"), "w") as case_report:
+    with open(os.path.join(os.path.expanduser("~"),f"Desktop/{datetime.date.today()}_case_report.txt"), "w") as case_report:
         lines = []
+        today = datetime.date.today()
+        lines.append(today.strftime("%b %d %Y")+"\n")
         for case, data in report_data.items():
             line = f"Case: {case}, Time: {data['time']} Minutes.\n"
             lines.append(line)
         case_report.writelines(lines)
+    print("created report.")
 
 def change_reported_state(connection,case):
     cursor = connection.cursor()
