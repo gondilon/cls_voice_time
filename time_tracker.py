@@ -1,4 +1,5 @@
 import datetime
+import math
 import os.path
 import sqlite3
 from sqlite3 import Error
@@ -13,7 +14,8 @@ def create_connection(db_file):
     """ create a database connection to a SQLite database """
     conn = None
     try:
-        conn = sqlite3.connect(db_file)
+        conn = sqlite3.connect(db_file, detect_types=sqlite3.PARSE_DECLTYPES |
+                                                        sqlite3.PARSE_COLNAMES)
         #print(db_file)
     except Error as e:
         print(e)
@@ -46,20 +48,28 @@ class Actions:
     def start_tracking(case: str) ->str:
         """Starts time tracking on a case"""
         started=True
-        start_time = datetime.datetime.now().strftime("%H:%M:%S")
+        start_time = datetime.datetime.now()
         connection = create_connection(connection_path)
-        start_track(connection, case)
-        #print(f"started {case} at {start_time}")
-        return f"started case {case} at {start_time}"
+        exists = check_existing_track(connection, case)
+        if exists:
+            return "Case already being tracked."
+        else:
+            started = start_track(connection, case)
+            #print(f"started {case} at {start_time}")
+            return started
 
     def stop_tracking(case: str)->str:
         """Starts time tracking on a case"""
         started=False
         stop_time = datetime.datetime.now().strftime("%H:%M:%S")
         connection = create_connection(connection_path)
-        ended = end_track(connection,case)
-        #print(f"stopped {case} at {stop_time} which was started at {ended}")
-        return f"stopped {case} at {stop_time} which was started at {ended}"
+        exists = check_existing_track(connection, case)
+        if exists:
+            ended = end_track(connection,case)
+            #print(f"stopped {case} at {stop_time} which was started at {ended}")
+            return f"stopped {case} at {stop_time} which was started at {ended}"
+        else:
+            return "Case not being tracked."
 
     def db_tables_create() -> str:
         """Starts time tracking on a case"""
@@ -76,18 +86,60 @@ class Actions:
 
 
 def create_report():
+    report_data = {}
+
     connection = create_connection(connection_path)
     cases_list = get_case_list()
     #print("cases list,",cases_list)
     for case_name, case_num in cases_list.items():
-            case_records = get_case_records(connection, case_num)
-            if case_records:
-                print(datetime.datetime.strptime(case_records[0][2],"%H:%M:%S"))
-                print(case_records)
-    #with open ("case_report.txt") as case_report:
+        case_report = {
+            "case_number": case_num,
+            "time": "",
+        }
+        case_records = get_case_records(connection, case_num)
+        if case_records:
+            for case in case_records:
+                if case[-1] == 1:
+                    continue
+                else:
+                    time_diff = time_difference(case[2], case[3])
+                    if case[1] in report_data.keys():
+                        report_data[case[1]]["time"] += time_diff
+                    else:
+                        case_report["time"] = time_diff
+                        report_data[case[1]] = case_report
+                    change_reported_state(connection, case[1])
+    print("created report.")
 
+    print(report_data)
 
+    with open(os.path.join(os.getcwd(),"user/cls_voice_time/case_report.txt"), "w") as case_report:
+        lines = []
+        for case, data in report_data.items():
+            line = f"Case: {case}, Time: {data['time']} Minutes.\n"
+            lines.append(line)
+        case_report.writelines(lines)
 
+def change_reported_state(connection,case):
+    cursor = connection.cursor()
+    stmt = '''update time_records set reported=1 where case_num = ?'''
+    cursor.execute(stmt, [case])
+    connection.commit()
+
+def time_difference(start_time, end_time):
+    difference = int(round((end_time-start_time).total_seconds()/60))
+    unit_diff = math.ceil(difference/6)
+    #print(unit_diff)
+    return 6*unit_diff
+
+def check_existing_track(connection, case):
+    cursor = connection.cursor()
+    case_records = cursor.execute('''select * from time_tracking where case_num = ?''', [case]).fetchall()
+
+    if case_records:
+        return True
+    else:
+        return False
 
 def get_case_records(connection, case):
     cursor = connection.cursor()
@@ -96,17 +148,18 @@ def get_case_records(connection, case):
 
 def start_track(connection, case):
     cursor = connection.cursor()
-    start_time = datetime.datetime.now().strftime("%H:%M:%S")
+    start_time = datetime.datetime.now()
     try:
         cursor.execute('''insert into time_tracking (case_num, start_time) values(?,?);''', [case, start_time])
-        print("added new case.", case, start_time)
+        print("added new case.", case, start_time.strftime('%H:%M:%S'))
         connection.commit()
     except Error as e:
         print(e)
+    return f"started case {case} at {start_time.strftime('%H:%M:%S')}"
 
 def end_track(connection, case):
     cursor = connection.cursor()
-    end_time = datetime.datetime.now().strftime("%H:%M:%S")
+    end_time = datetime.datetime.now()
 
     try:
         cursor.execute('''update time_tracking set end_time = ? where case_num = ?''', [end_time, case])
@@ -116,6 +169,7 @@ def end_track(connection, case):
         print("added to time records.")
     except Error as e:
         print("case record",e, case)
+        return e
 
     try:
 
@@ -123,23 +177,23 @@ def end_track(connection, case):
 
     except Error as e:
         print(e)
-
-
+        return e
 
     connection.commit()
     return case_record[1]
+
 def create_db_tables(connection):
     time_tracking_table = '''create table if not exists time_tracking (
         case_num varchar not null,
-        start_time varchar not null,
-        end_time varchar
+        start_time timestamp not null,
+        end_time timestamp
     );'''
     records_table = '''
         create table if not exists time_records (
             record_num integer PRIMARY KEY AUTOINCREMENT NOT NULL,
             case_num varchar not null,
-            start_time varchar not null,
-            end_time varchar not null
+            start_time timestamp not null,
+            end_time timestamp not null
         );
     '''
     try:
