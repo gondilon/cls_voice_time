@@ -1,4 +1,5 @@
 import datetime
+import json
 import math
 import os.path
 import sqlite3
@@ -8,6 +9,7 @@ from talon import Module, Context
 
 mod = Module()
 mod.list("case_list", desc="cases defined by user.")
+
 
 
 def create_connection(db_file):
@@ -25,14 +27,21 @@ def create_connection(db_file):
 def get_case_list():
 
     case_list = {}
-    print(os.getcwd())
-    with open(os.path.join(os.getcwd(),r"user\cls_voice_time\cases.txt")) as cases:
+    #print(os.getcwd())
+    with open(os.path.join(config["case_map_path"],"cases.txt"),"r") as cases:
         lines = cases.readlines()
         for line in lines:
             split_line = line.rstrip().split(" ")
             case_list[split_line[0]] = split_line[1]
             #print("case list",case_list)
     return case_list
+
+def load_config():
+    with open(os.path.join(os.getcwd(),"user/cls_voice_time/config.json"), "r") as config_file:
+        config_data = json.load(config_file)
+        return config_data
+
+config = load_config()
 
 ctx_default = Context()
 ctx_default.lists["user.case_list"] = get_case_list()
@@ -61,6 +70,8 @@ class Actions:
     def stop_tracking(case: str)->str:
         """Starts time tracking on a case"""
         started=False
+        #print("config: ",config)
+
         stop_time = datetime.datetime.now().strftime("%H:%M:%S")
         connection = create_connection(connection_path)
         exists = check_existing_track(connection, case)
@@ -112,7 +123,7 @@ def create_report():
 
     #print(report_data)
 
-    with open(os.path.join(os.path.expanduser("~"),f"Desktop/{datetime.date.today()}_case_report.txt"), "w") as case_report:
+    with open(os.path.join(config["report_path"],f"{datetime.date.today()}_case_report.txt"), "w") as case_report:
         lines = []
         today = datetime.date.today()
         lines.append(today.strftime("%b %d %Y")+"\n")
@@ -174,7 +185,6 @@ def end_track(connection, case):
         return e
 
     try:
-
         cursor.execute('''delete from time_tracking where case_num = ?''', [case])
 
     except Error as e:
@@ -182,7 +192,7 @@ def end_track(connection, case):
         return e
 
     connection.commit()
-    return case_record[1]
+    return case_record[1].strftime('%H:%M:%S')
 
 def create_db_tables(connection):
     time_tracking_table = '''create table if not exists time_tracking (
