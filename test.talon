@@ -11,4 +11,4 @@ create tables:
     user.db_tables_create()
 
 create report:
-    user.report()
+    app.notify(user.report())

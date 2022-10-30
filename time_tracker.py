@@ -153,7 +153,7 @@ def create_report():
             line = f"Case: {case}, Time: {data['time']} Minutes.\n"
             lines.append(line)
         case_report.writelines(lines)
-    print("created report.")
+    return "created report."
 
 def change_reported_state(connection,case):
     cursor = connection.cursor()
