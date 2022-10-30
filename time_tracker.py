@@ -53,7 +53,6 @@ stop_time =""
 
 @mod.action_class
 class Actions:
-
     def start_tracking(case: str) ->str:
         """Starts time tracking on a case"""
 
