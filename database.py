@@ -38,5 +38,5 @@ def create_db_tables(connection):
         print(e)
 
 if __name__ == '__main__':
-    connection = create_connection(os.path.join(os.getcwd(),"time_tracking.db"))
+    connection = create_connection(os.path.join(os.getcwd(), "time_tracking.db"))
     create_tables(connection)

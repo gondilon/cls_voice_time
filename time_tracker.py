@@ -37,7 +37,7 @@ def get_case_list():
     return case_list
 
 def load_config():
-    with open(os.path.join(os.getcwd(),"user/cls_voice_time/config.json"), "r") as config_file:
+    with open(os.path.join(os.path.expanduser("~"),config.json), "r") as config_file:
         config_data = json.load(config_file)
         return config_data
 
@@ -56,13 +56,24 @@ class Actions:
 
     def start_tracking(case: str) ->str:
         """Starts time tracking on a case"""
-        started=True
+
         start_time = datetime.datetime.now()
         connection = create_connection(connection_path)
         exists = check_existing_track(connection, case)
+
+        #connection = create_connection(connection_path)
+        any_tracked = check_any_track(connection)
         if exists:
             return "Case already being tracked."
+        elif any_tracked is not None:
+            #print("existing case,",any_tracked)
+            #connection = create_connection(connection_path)
+            end_track(connection, any_tracked[0][0])
+            started = start_track(connection, case)
+            # print(f"started {case} at {start_time}")
+            return f"Closed case {any_tracked[0][0]} {started}"
         else:
+
             started = start_track(connection, case)
             #print(f"started {case} at {start_time}")
             return started
@@ -76,6 +87,7 @@ class Actions:
         connection = create_connection(connection_path)
         exists = check_existing_track(connection, case)
         if exists:
+            connection = create_connection(connection_path)
             ended = end_track(connection,case)
             #print(f"stopped {case} at {stop_time} which was started at {ended}")
             return f"stopped {case} at {stop_time} which was started at {ended}"
@@ -93,8 +105,18 @@ class Actions:
         #connection = create_connection(connection_path)
         #create_db_tables(connection)
         create_report()
-        return "tables created."
+        return "report created."
 
+
+
+def check_any_track(connection):
+    cursor = connection.cursor()
+    case_records = cursor.execute('''select * from time_tracking''').fetchall()
+    #connection.close()
+    if case_records:
+        return case_records
+    else:
+        return None
 
 def create_report():
     report_data = {}
@@ -123,7 +145,7 @@ def create_report():
 
     #print(report_data)
 
-    with open(os.path.join(config["report_path"],f"{datetime.date.today()}_case_report.txt"), "w") as case_report:
+    with open(os.path.join(os.path.expanduser("~"),config["report_path"],f"{datetime.date.today()}_case_report.txt"), "w") as case_report:
         lines = []
         today = datetime.date.today()
         lines.append(today.strftime("%b %d %Y")+"\n")
@@ -148,8 +170,9 @@ def time_difference(start_time, end_time):
 def check_existing_track(connection, case):
     cursor = connection.cursor()
     case_records = cursor.execute('''select * from time_tracking where case_num = ?''', [case]).fetchall()
-
+    #connection.close()
     if case_records:
+
         return True
     else:
         return False
@@ -217,7 +240,7 @@ def create_db_tables(connection):
     connection.commit()
 
 if __name__ == '__main__':
-    connection = create_connection(os.path.join(os.getcwd(),"time_tracking.db"))
+    connection = create_connection(os.path.join(os.getcwd(), "time_tracking.db"))
     create_db_tables(connection)
 
 
