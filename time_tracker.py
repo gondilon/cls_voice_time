@@ -4,7 +4,7 @@ import math
 import os.path
 import sqlite3
 from sqlite3 import Error
-
+from os.path import exists
 from talon import Module, Context
 
 mod = Module()
@@ -28,7 +28,7 @@ def get_case_list():
 
     case_list = {}
     #print(os.getcwd())
-    with open(os.path.join(config["case_map_path"],"cases.txt"),"r") as cases:
+    with open(os.path.join(os.path.expanduser("~"),config["case_map_path"],"cases.txt"),"r") as cases:
         lines = cases.readlines()
         for line in lines:
             split_line = line.rstrip().split(" ")
@@ -37,7 +37,7 @@ def get_case_list():
     return case_list
 
 def load_config():
-    with open(os.path.join(os.path.expanduser("~"),config.json), "r") as config_file:
+    with open(os.path.join(os.path.expanduser("~"),"Documents","config.json"), "r") as config_file:
         config_data = json.load(config_file)
         return config_data
 
@@ -143,8 +143,12 @@ def create_report():
                     change_reported_state(connection, case[1])
 
     #print(report_data)
-
-    with open(os.path.join(os.path.expanduser("~"),config["report_path"],f"{datetime.date.today()}_case_report.txt"), "w") as case_report:
+    report_path = os.path.join(os.path.expanduser("~"),config["report_path"])
+    if exists(os.path.join(f"{datetime.date.today()}_case_report.txt")):
+        report_path += f"{datetime.date.today()}_case_report_new.txt"
+    else:
+        report_path+= f"{datetime.date.today()}_case_report.txt"
+    with open(report_path, "w") as case_report:
         lines = []
         today = datetime.date.today()
         lines.append(today.strftime("%b %d %Y")+"\n")
@@ -152,7 +156,7 @@ def create_report():
             line = f"Case: {case}, Time: {data['time']} Minutes.\n"
             lines.append(line)
         case_report.writelines(lines)
-    return "created report."
+    return f"created report.{report_path}"
 
 def change_reported_state(connection,case):
     cursor = connection.cursor()
@@ -161,9 +165,9 @@ def change_reported_state(connection,case):
     connection.commit()
 
 def time_difference(start_time, end_time):
-    difference = int(round((end_time-start_time).total_seconds()/60))
+    difference = int(round((end_time-start_time).total_seconds()/60,2))
     unit_diff = math.ceil(difference/6)
-    #print(unit_diff)
+    print(unit_diff/60, unit_diff)
     return 6*unit_diff
 
 def check_existing_track(connection, case):

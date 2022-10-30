@@ -16,3 +16,9 @@
    2. The case name is how you will identify the case in a voice command.
    3. example line: "john" 12-1234. User would say "track case John" to start tracking.
 6. When cls_voice_time is run form the first time, the "create tables" command must be run to setup the databse.
+
+#Unfinished issues
+1. connection to legalserver to upload data.
+2. Report names are generated based on the date, so if a report is run twice in one
+day it will overwrite the old one. 
+3. 
