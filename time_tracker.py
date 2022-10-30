@@ -137,6 +137,7 @@ def create_report():
                     time_diff = time_difference(case[2], case[3])
                     if case[1] in report_data.keys():
                         report_data[case[1]]["time"] += time_diff
+
                     else:
                         case_report["time"] = time_diff
                         report_data[case[1]] = case_report
